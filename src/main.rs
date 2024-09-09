@@ -95,7 +95,7 @@ fn run_server(c: &Context) {
     if let Some(tcp_config) = settings.tcp {
         server
             .add_channel(TcpServerChannel::new(
-                tcp_config.address.clone(),
+                &tcp_config.address.clone(),
                 tcp_config.port,
             ));
         info!(
@@ -108,9 +108,9 @@ fn run_server(c: &Context) {
     if let Some(websocket_config) = settings.websocket {
         server
             .add_channel(WebSocketServerChannel::new(
-                websocket_config.address.clone(),
+                &websocket_config.address.clone(),
                 websocket_config.port,
-                websocket_config.path.clone(),
+                &websocket_config.path.clone(),
             ));
         info!(
             "WebSocket channel added at {}:{}{}",
@@ -122,10 +122,10 @@ fn run_server(c: &Context) {
     if let Some(quic_config) = settings.quic {
         server
             .add_channel(QuicServerChannel::new(
-                quic_config.address.clone(),
+                &quic_config.address.clone(),
                 quic_config.port,
-                quic_config.cert_path.clone(),
-                quic_config.key_path.clone(),
+                &quic_config.cert_path.clone(),
+                &quic_config.key_path.clone(),
             ));
         info!(
             "QUIC channel added at {}:{}",
