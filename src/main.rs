@@ -54,7 +54,15 @@ async fn main() {
                 .description("Specify config file path")
                 .alias("c"),
         )
-        .action(run_server);
+        .action(|c: &Context| {
+            // 因为 .action() 不支持异步，这里将 run_server 包装成一个 tokio::spawn 任务
+            let config_path = c
+                .string_flag("config")
+                .unwrap_or("config/config.ini".to_string());
+            tokio::spawn(async move {
+                run_server(config_path).await;
+            });
+        });
 
     app.run(args);
 
@@ -65,30 +73,23 @@ async fn main() {
     info!("Shutting down...");
 }
 
-fn run_server(c: &Context) {
-    // 处理 `-c` 或 `--config` 参数，使用默认配置文件路径 "config.ini" 作为备选
-    let config_path = c
-        .string_flag("config")
-        .unwrap_or("config/config.ini".to_string());
-
+// 将 run_server 改为异步函数
+async fn run_server(config_path: String) {
     if !Path::new(&config_path).exists() {
         error!("Config file not found: {}", config_path);
         std::process::exit(1);
     }
 
-    // 加载配置文件
     let settings = load_config(&config_path).unwrap_or_else(|err| {
         error!("Error loading config: {:?}", err);
-        std::process::exit(1); // 遇到严重错误时退出
+        std::process::exit(1);
     });
 
-    // 检查至少有一个通道配置
     if settings.tcp.is_none() && settings.websocket.is_none() && settings.quic.is_none() {
         error!("At least one channel (quic/tcp/websocket) must be configured.");
         std::process::exit(1);
     }
 
-    // 创建服务器实例
     let mut server = MessageTransportServer::new();
 
     // 如果配置了 TCP，添加 TCP 通道
@@ -97,28 +98,29 @@ fn run_server(c: &Context) {
             .add_channel(TcpServerChannel::new(
                 &tcp_config.address.clone(),
                 tcp_config.port,
-            ));
+            ))
+            .await;
         info!(
             "TCP channel added at {}:{}",
             tcp_config.address, tcp_config.port
         );
     }
 
-    // 如果配置了 WebSocket，添加 WebSocket 通道
+    // WebSocket 和 QUIC 配置保持不变
     if let Some(websocket_config) = settings.websocket {
         server
             .add_channel(WebSocketServerChannel::new(
                 &websocket_config.address.clone(),
                 websocket_config.port,
                 &websocket_config.path.clone(),
-            ));
+            ))
+            .await;
         info!(
             "WebSocket channel added at {}:{}{}",
             websocket_config.address, websocket_config.port, websocket_config.path
         );
     }
 
-    // 如果配置了 QUIC，添加 QUIC 通道
     if let Some(quic_config) = settings.quic {
         server
             .add_channel(QuicServerChannel::new(
@@ -126,14 +128,15 @@ fn run_server(c: &Context) {
                 quic_config.port,
                 &quic_config.cert_path.clone(),
                 &quic_config.key_path.clone(),
-            ));
+            ))
+            .await;
         info!(
             "QUIC channel added at {}:{}",
             quic_config.address, quic_config.port
         );
     }
 
-    // 设置消息处理器
+    // 设置处理器
     server
         .set_message_handler(|context: Arc<MsgContext>, packet: Packet| {
             info!(
@@ -150,25 +153,23 @@ fn run_server(c: &Context) {
                     }
                 }
             });
-        });
+        })
+        .await;
 
-    // 设置连接处理器
     server.set_connect_handler(|context: Arc<MsgContext>| {
         info!("New connection, session ID: {}", context.session().id());
     });
 
-    // 设置断开连接处理器
     server.set_disconnect_handler(|context: Arc<MsgContext>| {
         info!("Disconnected, session ID: {}", context.session().id());
     });
 
-    // 设置错误处理器
     server.set_error_handler(|error| {
         error!("Error: {:?}", error);
     });
 
     // 启动服务器
-    server.start();
+    server.start().await;
     info!("Server is running...");
 }
 
