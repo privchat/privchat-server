@@ -1,10 +1,11 @@
 mod config;
-mod connection_manager;
-mod gate_server;
+mod manager;
+mod server;
 mod handlers;
+mod service;
 
 use crate::config::load_config;
-use crate::gate_server::GateServer;
+use crate::server::ChatServer;
 use tokio;
 use tracing::{error, info, Level};
 use seahorse::{App, Context, Flag, FlagType};
@@ -52,8 +53,8 @@ async fn run_server(config_path: String) {
     // 加载配置文件
     let config = load_config(&config_path).expect("Failed to load config");
 
-    let gate_server = GateServer::new(config).await;
+    let chat_server = ChatServer::new(config).await;
 
     // 启动服务器
-    GateServer::start(gate_server.clone()).await;
+    ChatServer::start(chat_server).await;
 }

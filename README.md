@@ -4,4 +4,5 @@
 
  * Add connection manager
  * Add message handler
+ * Add rpc
 

@@ -176,6 +176,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "busybody"
+version = "0.3.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bb86d46036332459a8d8a905ac07c5bceecbc51f8c1d25ae17c975d56c976c6"
+dependencies = [
+ "async-trait",
+ "futures",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1073,6 +1083,7 @@ dependencies = [
 name = "privchat"
 version = "0.1.0"
 dependencies = [
+ "busybody",
  "config",
  "msgtrans",
  "seahorse",
